@@ -1,11 +1,11 @@
 # finger counting model with live webcam
 
 <p align="center">
-  <img src="1-5test.gif" alt="1-5 Finger Counting GIF" />
+  ![hippo](https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExMmVqazJhNTc4czBjd2duNWwza3R5Y2JnMmFhOW1jc3JwZHNvenBxdyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Nz9ev3wZDaSMoqdgwX/giphy.gif)
 </p>
 
 ## DATA
-- test
+Since I wanted to implement this trained CNN on live webcam, I wanted a larger data set. Found a github repo (https://github.com/Paradiddle131/Finger-Count-Detection-Using-Deep-Learning?tab=readme-ov-file) which had videos
 
 ## MAIN
 - test
