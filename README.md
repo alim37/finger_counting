@@ -1,8 +1,9 @@
 # finger counting model with live webcam
 
 <p align="center">
-  <img src="https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExMmVqazJhNTc4czBjd2duNWwza3R5Y2JnMmFhOW1jc3JwZHNvenBxdyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Nz9ev3wZDaSMoqdgwX/giphy.gif"
-    alt = "1-5 Finger Counting Showcase"/>
+  <img src="https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExMmVqazJhNTc4czBjd2duNWwza3R5Y2JnMmFhOW1jc3JwZHNvenBxdyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Nz9ev3wZDaSMoqdgwX/giphy.gif" alt = "1-5 Finger Counting Showcase"/>
+  <br>
+  <em>1-5 Finger Counting Showcase</em>
 </p>
 
 ## DATA
