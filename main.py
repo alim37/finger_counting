@@ -5,7 +5,7 @@ import mediapipe as mp
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+from tensorflow.keras import layers
 from tensorflow.keras.optimizers import Adam
 
 mp_hands = mp.solutions.hands
@@ -15,8 +15,7 @@ def process_video_with_mediapipe(video_path, label):
     frames = []
     labels = []
     
-    with mp_hands.Hands(static_image_mode=True,  max_num_hands=1, min_detection_confidence=0.5) as hands:
-        
+    with mp_hands.Hands(static_image_mode=True, max_num_hands=1, min_detection_confidence=0.5) as hands:
         frame_count = 0
         while cap.isOpened():
             ret, frame = cap.read()
@@ -47,9 +46,7 @@ def process_video_with_mediapipe(video_path, label):
                         gray = cv2.cvtColor(hand_img, cv2.COLOR_BGR2GRAY)
                         blurred = cv2.GaussianBlur(gray, (5, 5), 0)
                         thresh = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
-
                         resized = cv2.resize(thresh, (64, 64))
-                        
                         normalized = resized / 255.0
                         
                         frames.append(normalized)
@@ -63,15 +60,10 @@ def process_video_with_mediapipe(video_path, label):
             frame_count += 1
     
     cap.release()
-    
-    if not frames:  
-        print(f"Warning: No hands detected in {video_path}")
-        return [], []
         
     return np.array(frames), np.array(labels)
 
 def prepare_dataset(folder, save_debug=True):
-    
     X, y = [], []
     
     if save_debug:
@@ -81,7 +73,7 @@ def prepare_dataset(folder, save_debug=True):
     
     for file in os.listdir(folder):
         if file.endswith(".mp4"):
-            label = int(file.split("_")[0]) - 1  # 0 indexed
+            label = int(file.split("_")[0]) - 1  # 0-indexed
             class_counts[label] = class_counts.get(label, 0) + 1
             
             video_path = os.path.join(folder, file)
@@ -99,58 +91,57 @@ def prepare_dataset(folder, save_debug=True):
     
     print(f"Total extracted frames: {len(X)}")
     
-    if not X:  
-        raise Exception("No valid frames extracted from any videos!")
+    X = np.array(X).reshape(-1, 64, 64, 1)  # CNN input as (64,64,1)
+    y = to_categorical(y, num_classes=5)     
     
-    X = np.array(X).reshape(-1, 64, 64, 1)  # Reshape for CNN input
-    y = to_categorical(y, num_classes=5)  # One-hot encoding
-    
-    # https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html
-    # https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html
     return train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
-# https://www.tensorflow.org/api_docs/python/tf/keras/Model
-def train_model(train_X, train_y, test_X, test_y, epochs=20, batch_size=32):
-    model = Sequential([
-        Conv2D(32, (3, 3), activation='relu', input_shape=(64, 64, 1)),
-        MaxPooling2D((2, 2)),
-        
-        Conv2D(64, (3, 3), activation='relu'),
-        MaxPooling2D((2, 2)),
-        
-        Conv2D(128, (3, 3), activation='relu'),
-        MaxPooling2D((2, 2)),
-        
-        Flatten(),
-        Dense(128, activation='relu'),
-        Dropout(0.5),
-        Dense(5, activation='softmax')
-    ])
+# reduce amount of time spent running since before I had to reprocess the data everytime.
+def load_or_process_dataset(dataset_folder="dataset", save_debug=True):
+    cache_files = {
+        "train_X": "train_X_improved.npy",
+        "test_X": "test_X_improved.npy",
+        "train_y": "train_y_improved.npy",
+        "test_y": "test_y_improved.npy",
+    }
     
-    model.compile(optimizer=Adam(learning_rate=0.001), loss='categorical_crossentropy', metrics=['accuracy'])
-    model.summary()
+    if all(os.path.exists(f) for f in cache_files.values()):
+        print("Loading cached data.")
+        train_X = np.load(cache_files["train_X"])
+        test_X = np.load(cache_files["test_X"])
+        train_y = np.load(cache_files["train_y"])
+        test_y = np.load(cache_files["test_y"])
+    else:
+        print("Processing data")
+        train_X, test_X, train_y, test_y = prepare_dataset(dataset_folder, save_debug)
+        np.save(cache_files["train_X"], train_X)
+        np.save(cache_files["test_X"], test_X)
+        np.save(cache_files["train_y"], train_y)
+        np.save(cache_files["test_y"], test_y)
     
-    history = model.fit(
-        train_X, train_y, 
-        epochs=epochs, 
-        batch_size=batch_size, 
-        validation_data=(test_X, test_y),
-        verbose=1
-    )
-    
-    test_loss, test_acc = model.evaluate(test_X, test_y)
-    print(f"Test Accuracy: {test_acc:.4f}")
-    
-    model.save("finger_counter_model_improved.h5")
-    print("Model saved as 'finger_counter_model_improved.h5'")
-    
-    return model, history
+    return train_X, test_X, train_y, test_y
 
-if __name__ == "__main__":
-    train_X, test_X, train_y, test_y = prepare_dataset("dataset", save_debug=True)
-    model, history = train_model(train_X, train_y, test_X, test_y, epochs=20)
-    
-    np.save("train_X_improved.npy", train_X)
-    np.save("test_X_improved.npy", test_X)
-    np.save("train_y_improved.npy", train_y)
-    np.save("test_y_improved.npy", test_y)
+train_X, test_X, train_y, test_y = load_or_process_dataset("dataset", save_debug=True)
+
+model = Sequential()
+model.add(layers.Conv2D(32, (3, 3), activation='relu', input_shape=(64, 64, 1)))
+model.add(layers.MaxPooling2D((2, 2)))
+model.add(layers.Conv2D(64, (3, 3), activation='relu'))
+model.add(layers.MaxPooling2D((2, 2)))
+model.add(layers.Conv2D(64, (3, 3), activation='relu'))
+model.add(layers.MaxPooling2D((2, 2)))
+model.add(layers.Flatten())
+model.add(layers.Dense(64, activation='relu'))
+model.add(layers.Dense(5, activation='softmax'))  # Output layer for 5 classes
+model.summary()
+
+model.compile(optimizer=Adam(learning_rate=0.001), loss='categorical_crossentropy', metrics=['accuracy'])
+history = model.fit(train_X, train_y, epochs=20, batch_size=32, validation_data=(test_X, test_y), verbose=1)
+
+model.save("finger_counter_model_improved.h5")
+print("Model saved as 'finger_counter_model_improved.h5'")
+
+np.save("train_X_improved.npy", train_X)
+np.save("test_X_improved.npy", test_X)
+np.save("train_y_improved.npy", train_y)
+np.save("test_y_improved.npy", test_y)
